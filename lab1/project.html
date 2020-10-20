@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+
+<html>
+<head>Bartosz Kordek - Projekt nr 1</title>
+    <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1">
+    <style type="text/css">
+        body{
+            background-color: #606060;
+            overflow: hidden;
+        }
+    </style>
+
+    <script src="three.js"></script>
+    <script src="Detector.js"></script>
+</head>
+<body>
+
+<div id="WebGLCanvas"> </div>
+
+<script>
+
+    var scene;
+
+    var camera;
+
+    var treeMesh;
+
+    initializeScene();
+
+    renderScene();
+
+    animateScene();
+
+    function Slab(length, width, depth, colour){
+
+        this.length=length;
+        this.width=width;
+        this.depth=depth;
+        this.colour=colour;
+
+        var positionX = 0.0;
+        var positionY = 0.0;
+        var positionZ = 0.0;
+
+        var slabMesh;
+
+        this.drawSlab = function(){
+
+            var slabMaterial = new THREE.MeshBasicMaterial({color:colour});
+
+            var slabGeometry = new THREE.Geometry();
+            slabGeometry.vertices.push(new THREE.Vector3( -width/2, -depth, -length/2));
+            slabGeometry.vertices.push(new THREE.Vector3( -width/2, -depth, length/2));
+            slabGeometry.vertices.push(new THREE.Vector3( width/2, -depth, length/2));
+            slabGeometry.vertices.push(new THREE.Vector3( width/2, -depth, -length/2));
+            slabGeometry.faces.push(new THREE.Face3(0, 1, 2));
+            slabGeometry.faces.push(new THREE.Face3(0, 2, 3));
+
+            slabMesh = new THREE.Mesh(slabGeometry, slabMaterial);
+            slabMesh.position.set(positionX, positionY, positionZ);
+            scene.add(slabMesh);
+        }
+
+        this.getXPosition = function(){
+            return positionX;
+        }
+
+        this.getYPosition = function(){
+            return positionY;
+        }
+
+        this.getZPosition = function(){
+            return positionZ;
+        }
+
+        this.getLength = function(){
+            return length;
+        }
+
+        this.getWidth = function(){
+            return width;
+        }
+
+        this.getDepth = function(){
+            return depth;
+        }
+
+        this.getSlabMesh = function(){
+            return slabMesh;
+        }
+
+    }
+
+
+    function drawTree(xPosition, yPosition, zPosition, height, radiusBottom){
+
+        //Assumptions:
+        //tree geometry - cone
+        var treeColourPrimary = 0x00FF00;
+        var treeColourSecondary = 0x0F0900;
+        var radiusTop = 0.0; //this is a cone, not cylinder
+        var segments = 20;
+        var openEnded = false;
+
+        var treeGeometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, segments, openEnded);
+
+        for(i = 0; i < treeGeometry.faces.length; i++){
+            if(treeGeometry.faces[i] instanceof THREE.Face4){
+                treeGeometry.faces[i].vertexColors[0] = new THREE.Color(treeColourPrimary);
+                if((i % 2) == 0){
+                    treeGeometry.faces[i].vertexColors[1] = new THREE.Color(treeColourSecondary);
+                    treeGeometry.faces[i].vertexColors[2] = new THREE.Color(treeColourPrimary);
+                } else {
+                    treeGeometry.faces[i].vertexColors[1] = new THREE.Color(treeColourSecondary);
+                    treeGeometry.faces[i].vertexColors[2] = new THREE.Color(treeColourPrimary);
+                }
+                treeGeometry.faces[i].vertexColors[3] = new THREE.Color(treeColourPrimary);
+            } else {
+                treeGeometry.faces[i].vertexColors[0] = new THREE.Color(treeColourPrimary);
+                treeGeometry.faces[i].vertexColors[1] = new THREE.Color(treeColourSecondary);
+                treeGeometry.faces[i].vertexColors[2] = new THREE.Color(treeColourPrimary);
+            }
+        }
+
+
+
+        var treeMaterial = new THREE.MeshBasicMaterial({
+            vertexColors:THREE.VertexColors,
+            side:THREE.DoubleSide
+        });
+
+
+        treeMesh = new THREE.Mesh(treeGeometry, treeMaterial);
+        treeMesh.position.set(xPosition, yPosition, zPosition);
+        scene.add(treeMesh);
+
+    }
+
+
+    function drawHouse(xPosition, yPosition, zPosition, height, length, width, colour){
+
+        var wallsRoofRatio = 0.75;
+
+        //draw walls
+        var wallsHeight = wallsRoofRatio*height;
+        var wallsColourPrimary = colour;
+        var wallsColourSecondary = 0x696969;
+
+        var wallsGeometry = new THREE.CubeGeometry(length, wallsHeight, width);
+
+        var wallsMaterials = [
+            new THREE.MeshBasicMaterial({color:colour}),
+            new THREE.MeshBasicMaterial({color:colour}),
+            new THREE.MeshBasicMaterial({color:colour}),
+            new THREE.MeshBasicMaterial({color:colour}),
+            new THREE.MeshBasicMaterial({color:colour}),
+            new THREE.MeshBasicMaterial({color:colour})
+        ];
+
+        for(i = 0; i < wallsGeometry.faces.length; i++){
+            wallsGeometry.faces[i].vertexColors[0] = new THREE.Color(wallsColourPrimary);
+            wallsGeometry.faces[i].vertexColors[1] = new THREE.Color(wallsColourPrimary);
+            wallsGeometry.faces[i].vertexColors[2] = new THREE.Color(wallsColourSecondary);
+        }
+
+        var wallsMaterial = new THREE.MeshBasicMaterial({
+            vertexColors:THREE.VertexColors,
+            side:THREE.DoubleSide
+        });
+
+        wallsMesh = new THREE.Mesh(wallsGeometry, wallsMaterial);
+        wallsMesh.position.set(xPosition, yPosition, zPosition);
+        scene.add(wallsMesh);
+
+        //drawRoof
+        var roofHeight = (1-wallsRoofRatio)*height;
+        var roofColourPrimary = 0xFF0000;
+        var roofColourSecondary = 0x8B4513;
+        var roofLengthWidthRatio = 1.1;
+
+        var roofGeometry = new THREE.Geometry();
+
+        roofGeometry.vertices.push(new THREE.Vector3(-length*roofLengthWidthRatio/2,  0.0, -width*roofLengthWidthRatio/2));
+        roofGeometry.vertices.push(new THREE.Vector3(length*roofLengthWidthRatio/2, 0.0, -width*roofLengthWidthRatio/2));
+        roofGeometry.vertices.push(new THREE.Vector3( 0.0, roofHeight, -width*roofLengthWidthRatio/2));
+
+        roofGeometry.vertices.push(new THREE.Vector3(-length*roofLengthWidthRatio/2,  0.0, width*roofLengthWidthRatio/2));
+        roofGeometry.vertices.push(new THREE.Vector3(length*roofLengthWidthRatio/2, 0.0, width*roofLengthWidthRatio/2));
+        roofGeometry.vertices.push(new THREE.Vector3( 0.0, roofHeight, width*roofLengthWidthRatio/2));
+
+        roofGeometry.faces.push(new THREE.Face3(0, 1, 2));
+        roofGeometry.faces.push(new THREE.Face3(3, 4, 5));
+        roofGeometry.faces.push(new THREE.Face3(0, 2, 5));
+        roofGeometry.faces.push(new THREE.Face3(0, 3, 5));
+        roofGeometry.faces.push(new THREE.Face3(1, 2, 5));
+        roofGeometry.faces.push(new THREE.Face3(1, 4, 5));
+
+        for(i = 0; i < roofGeometry.faces.length; i++){
+            if(roofGeometry.faces[i] instanceof THREE.Face4){
+                roofGeometry.faces[i].vertexColors[0] = new THREE.Color(roofColourPrimary);
+                if((i % 2) == 0){
+                    roofGeometry.faces[i].vertexColors[1] = new THREE.Color(roofColourPrimary);
+                    roofGeometry.faces[i].vertexColors[2] = new THREE.Color(roofColourSecondary);
+                } else {
+                    roofGeometry.faces[i].vertexColors[1] = new THREE.Color(roofColourPrimary);
+                    roofGeometry.faces[i].vertexColors[2] = new THREE.Color(roofColourSecondary);
+                }
+                roofGeometry.faces[i].vertexColors[3] = new THREE.Color(roofColourSecondary);
+            } else {
+                roofGeometry.faces[i].vertexColors[0] = new THREE.Color(roofColourPrimary);
+                roofGeometry.faces[i].vertexColors[1] = new THREE.Color(roofColourSecondary);
+                roofGeometry.faces[i].vertexColors[2] = new THREE.Color(roofColourPrimary);
+            }
+        }
+
+        var roofMaterial = new THREE.MeshBasicMaterial({
+            vertexColors:THREE.VertexColors,
+            side:THREE.DoubleSide
+        });
+
+        var roofMesh = new THREE.Mesh(roofGeometry, roofMaterial);
+        roofMesh.position.set(xPosition, yPosition+wallsHeight/2, zPosition);
+        scene.add(roofMesh);
+
+    }
+
+
+    function drawPath(slab, length, width, colour, pathXPosition, pathZPosition){
+
+        var slabYPosition = slab.getYPosition();
+        var slabLength = slab.getLength();
+        var slabWidth = slab.getWidth();
+        var slabDepth = slab.getDepth()-0.1; //0.1 above slab
+
+        //validate if path area overlaps slab area
+        if(slabLength<length) console.exception("Path length larger than slab length");
+        if(slabWidth<width) console.exception("Path width larger than slab width");
+
+        var pathMaterial = new THREE.MeshBasicMaterial({color:colour});
+
+        var pathGeometry = new THREE.Geometry();
+        pathGeometry.vertices.push(new THREE.Vector3( -width/2, -slabDepth, -length/2));
+        pathGeometry.vertices.push(new THREE.Vector3( -width/2, -slabDepth, length/2));
+        pathGeometry.vertices.push(new THREE.Vector3( width/2, -slabDepth, length/2));
+        pathGeometry.vertices.push(new THREE.Vector3( width/2, -slabDepth, -length/2));
+        pathGeometry.faces.push(new THREE.Face3(0, 1, 2));
+        pathGeometry.faces.push(new THREE.Face3(0, 2, 3));
+
+        pathMesh = new THREE.Mesh(pathGeometry, pathMaterial);
+        pathMesh.position.set(pathXPosition, slabYPosition, pathZPosition);
+        scene.add(pathMesh);
+    }
+
+    function drawLamp(xPosition, yPosition, zPosition){
+
+        var pylonHeight = 8.0;
+
+        var bulbRadius = 0.55;
+        var bulbWidthSegments = 10;
+        var bulbHeightSegments = 10;
+        var bulbColour1 = 0xFFFF00;
+        var bulbColour2 = 0xFFDAB9;
+        var bulbColour3 = 0xBDB76B;
+        var bulbXPosition = xPosition;
+        var bulbYPosition = yPosition+pylonHeight+bulbRadius/2;
+        var bulbZPosition = zPosition;
+
+        var bulbGeometry = new THREE.SphereGeometry( bulbRadius, bulbWidthSegments, bulbHeightSegments );
+
+        for(i = 0; i < bulbGeometry.faces.length; i++){
+            if(bulbGeometry.faces[i] instanceof THREE.Face4){
+                bulbGeometry.faces[i].vertexColors[0] = new THREE.Color(bulbColour1);
+                if((i % 2) == 0){
+                    bulbGeometry.faces[i].vertexColors[1] = new THREE.Color(bulbColour1);
+                    bulbGeometry.faces[i].vertexColors[2] = new THREE.Color(bulbColour2);
+                } else {
+                    bulbGeometry.faces[i].vertexColors[1] = new THREE.Color(bulbColour1);
+                    bulbGeometry.faces[i].vertexColors[2] = new THREE.Color(bulbColour2);
+                }
+                bulbGeometry.faces[i].vertexColors[3] = new THREE.Color(bulbColour1);
+            } else {
+                bulbGeometry.faces[i].vertexColors[0] = new THREE.Color(bulbColour1);
+                bulbGeometry.faces[i].vertexColors[1] = new THREE.Color(bulbColour2);
+                bulbGeometry.faces[i].vertexColors[2] = new THREE.Color(bulbColour3);
+            }
+        }
+
+        var bulbMaterial = new THREE.MeshBasicMaterial({
+            vertexColors:THREE.VertexColors,
+            side:THREE.DoubleSide
+        });
+
+        var bulbMesh = new THREE.Mesh( bulbGeometry, bulbMaterial );
+        bulbMesh.position.set(bulbXPosition, bulbYPosition, bulbZPosition);
+        scene.add( bulbMesh );
+
+
+        var pylonColour1 = 0x000000;
+        var pylonColour2 = 0x806080;
+        var pylonColour3 = 0x87CEFA;
+        var pylonradiusTop = 0.15;
+        var pylonradiusBottom = 0.20;
+        var pylonSegments = 20;
+        var pylonOpenEnded = false;
+
+        var pylonGeometry = new THREE.CylinderGeometry(pylonradiusTop, pylonradiusBottom, pylonHeight, pylonSegments, pylonOpenEnded);
+
+        for(i = 0; i < pylonGeometry.faces.length; i++){
+            if(pylonGeometry.faces[i] instanceof THREE.Face4){
+                pylonGeometry.faces[i].vertexColors[0] = new THREE.Color(pylonColour1);
+                if((i % 2) == 0){
+                    pylonGeometry.faces[i].vertexColors[1] = new THREE.Color(pylonColour2);
+                    pylonGeometry.faces[i].vertexColors[2] = new THREE.Color(pylonColour3);
+                } else {
+                    pylonGeometry.faces[i].vertexColors[1] = new THREE.Color(pylonColour2);
+                    pylonGeometry.faces[i].vertexColors[2] = new THREE.Color(pylonColour3);
+                }
+                pylonGeometry.faces[i].vertexColors[3] = new THREE.Color(pylonColour2);
+            } else {
+                pylonGeometry.faces[i].vertexColors[0] = new THREE.Color(pylonColour1);
+                pylonGeometry.faces[i].vertexColors[1] = new THREE.Color(pylonColour2);
+                pylonGeometry.faces[i].vertexColors[2] = new THREE.Color(pylonColour2);
+            }
+        }
+
+        var pylonMaterial = new THREE.MeshBasicMaterial({
+            vertexColors:THREE.VertexColors,
+            side:THREE.DoubleSide
+        });
+
+        pylonMesh = new THREE.Mesh(pylonGeometry, pylonMaterial);
+        pylonMesh.position.set(xPosition, yPosition+pylonHeight/2, zPosition);
+        scene.add(pylonMesh);
+
+
+    }
+
+    function initializeScene(){
+
+        if(Detector.webgl){
+            renderer = new THREE.WebGLRenderer({antialias:true});
+        } else {
+            renderer = new THREE.CanvasRenderer();
+        }
+
+        renderer.setClearColor(0x606060, 1);
+
+        canvasWidth = window.innerWidth;
+        canvasHeight = window.innerHeight;
+
+        renderer.setSize(canvasWidth, canvasHeight);
+
+        document.getElementById("WebGLCanvas").appendChild(renderer.domElement);
+
+
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(30, canvasWidth / canvasHeight, 1, 1000);
+        camera.position.set(22, 12, -30);
+        camera.lookAt(scene.position);
+        scene.add(camera);
+
+        //draw slab
+        var slabLength = 30.0;
+        var slabWidth = 30.0;
+        var slabDepth = 0.0;
+        var slabColour = 0x0C5F0C;
+        var slab = new Slab(slabLength, slabWidth, slabDepth, slabColour);
+        slab.drawSlab();
+
+        //draw trees
+        var tree1XPosition = 1.0;
+        var tree1YPosition = 1.25;
+        var tree1ZPosition = 2.0;
+        var tree1Radius = 0.5;
+        var tree1Height = 3.0;
+        drawTree(tree1XPosition, tree1YPosition, tree1ZPosition, tree1Height, tree1Radius);
+
+        var tree2XPosition = 10.0;
+        var tree2YPosition = 2.5;
+        var tree2ZPosition = 2.0;
+        var tree2Radius = 1.0;
+        var tree2Height = 5.0;
+        drawTree(tree2XPosition, tree2YPosition, tree2ZPosition, tree2Height, tree2Radius);
+
+        var tree3XPosition = 10.0;
+        var tree3YPosition = 3.25;
+        var tree3ZPosition = -10.0;
+        var tree3Radius = 1.5;
+        var tree3Height = 6.5;
+        drawTree(tree3XPosition, tree3YPosition, tree3ZPosition, tree3Height, tree3Radius);
+
+        var tree4XPosition = -10.0;
+        var tree4YPosition = 2.25;
+        var tree4ZPosition = -10.0;
+        var tree4Radius = 0.8;
+        var tree4Height = 4.5;
+        drawTree(tree4XPosition, tree4YPosition, tree4ZPosition, tree4Height, tree4Radius);
+
+        //drawHouse no1
+        var house1XPosition = -5.0;
+        var house1YPosition = 2.5;
+        var house1ZPosition = -5.0;
+        var house1Height = 6.0;
+        var house1Length = 5.0;
+        var house1Width = 5.0;
+        var house1Colour = 0xFFFF00;
+
+        drawHouse(house1XPosition,
+            house1YPosition,
+            house1ZPosition,
+            house1Height,
+            house1Length,
+            house1Width,
+            house1Colour);
+
+        //draw house no2
+        var house2XPosition =  5.0;
+        var house2YPosition = 3.0;
+        var house2ZPosition = 7.0;
+        var house2Height = 7.0;
+        var house2Length = 6.0;
+        var house2Width = 6.0;
+        var house2Colour = 0x000FFF;
+        drawHouse(house2XPosition,
+            house2YPosition,
+            house2ZPosition,
+            house2Height,
+            house2Length,
+            house2Width,
+            house2Colour);
+
+        //draw path
+        var pathColour = 0x202020;
+        var path1Length = 6.0;
+        var path1Width = 1.5;
+        var path1XPosition = 0.0;
+        var path1ZPosition = 3.0;
+        drawPath(slab, path1Length, path1Width, pathColour, path1XPosition, path1ZPosition);
+
+        var path2Length = 1.5;
+        var path2Width = 25.0;
+        var path2XPosition = 0.0;
+        var path2ZPosition = 0.0;
+        drawPath(slab, path2Length, path2Width, pathColour, path2XPosition, path2ZPosition);
+
+        //draw lamp
+        var lampXPosition = -10.0;
+        var lampYPosition = 0.0;
+        var lampZPosition = 10.0;
+        drawLamp(lampXPosition, lampYPosition, lampZPosition);
+    }
+
+    function animateScene(){
+
+        treeMesh.rotation.y += 0.1; //animate last created tree mesh
+        requestAnimationFrame(animateScene);
+        renderScene();
+
+    }
+
+    function renderScene(){
+        renderer.render(scene, camera);
+    }
+
+</script>
+</body>
+</html>
