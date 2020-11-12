@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<title>Reflection (Three.js) Example 04 05</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link rel=stylesheet href="css/base.css"/>
+	<script type="text/javascript" src="dat.gui.js"></script>
+</head>
+<body>
+
+<script src="Three.js"></script>
+<script src="ParametricGeometries.js"></script>
+<script src="CurveExtras.js"></script>
+<script src="Detector.js"></script>
+<script src="Stats.js"></script>
+<script src="OrbitControls.js"></script>
+<script src="THREEx.KeyboardState.js"></script>
+<script src="THREEx.FullScreen.js"></script>
+<script src="THREEx.WindowResize.js"></script>
+
+<!-- jQuery code to display an information button and box when clicked. -->
+<script src="jquery-1.9.1.js"></script>
+<script src="jquery-ui.js"></script>
+<link rel=stylesheet href="jquery-ui.css" />
+<link rel=stylesheet href="info.css"/>
+<script src="info.js"></script>
+<div id="infoButton"></div>
+<div id="infoBox" title="Demo Information">
+This three.js demo is part of a collection at
+<a href="http://stemkoski.github.io/Three.js/">http://stemkoski.github.io/Three.js/</a>
+</div>
+<!-- ------------------------------------------------------------ -->
+
+<div id="ThreeJS" style="position: absolute; left:0px; top:0px"></div>
+<script>
+/*
+	Three.js "tutorials by example"
+	Author: Lee Stemkoski
+	Date: July 2013 (three.js v59dev)
+*/
+
+// MAIN
+
+// standard global variables
+var container, scene, camera, renderer, controls, stats;
+var keyboard = new THREEx.KeyboardState();
+var clock = new THREE.Clock();
+
+// custom global variables
+var mirrorCube, mirrorCubeCamera; // for mirror material
+var mirrorSphere, mirrorSphereCamera; // for mirror material
+
+var mirrorBall, mirrorBallCamera; //for ball mirror
+var mirrorTorus, mirrorTorusCamera; //for tour mirror
+
+var mirrorSphereInsideTorus, mirrorSphereInsideTorusCamera; // for sphere inside torus
+var mirrorTorusAroundSphere, mirrorTorusAroundSphereCamera; //for torus around sphere
+var mirrorRotatingCube, mirrorRotatingCubeCamera; // for rotating cube
+
+
+var step = 0;
+var gui;
+var speedControls;
+
+init();
+animate();
+
+// FUNCTIONS 		
+function init() 
+{
+	
+	gui = new dat.GUI();
+	speedControls = new function(){
+		this.torusRotationYSpeed = 0.05;
+		this.torusPositionYSpeed = 0.02;
+		this.cubeRotation = 0.05;
+	}
+	
+	gui.add(speedControls, 'torusRotationYSpeed', 0, 1).onChange(function (e) {
+        torusRotationYSpeed = e;
+    });
+	
+	gui.add(speedControls, 'torusPositionYSpeed', 0, 0.5).onChange(function (e) {
+        torusPositionYSpeed = e;
+    });
+	
+	gui.add(speedControls, 'cubeRotation', 0, 0.5).onChange(function (e) {
+        cubeRotation = e;
+    });
+	
+	// SCENE
+	scene = new THREE.Scene();
+	// CAMERA
+	var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
+	var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
+	camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR);
+	scene.add(camera);
+	camera.position.set(0,150,400);
+	camera.lookAt(scene.position);	
+	// RENDERER
+	if ( Detector.webgl )
+		renderer = new THREE.WebGLRenderer( {antialias:true} );
+	else
+		renderer = new THREE.CanvasRenderer(); 
+	renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+	container = document.getElementById( 'ThreeJS' );
+	container.appendChild( renderer.domElement );
+	// EVENTS
+	THREEx.WindowResize(renderer, camera);
+	THREEx.FullScreen.bindKey({ charCode : 'm'.charCodeAt(0) });
+	// CONTROLS
+	controls = new THREE.OrbitControls( camera, renderer.domElement );
+	// STATS
+	stats = new Stats();
+	stats.domElement.style.position = 'absolute';
+	stats.domElement.style.bottom = '0px';
+	stats.domElement.style.zIndex = 100;
+	container.appendChild( stats.domElement );
+	// LIGHT
+	var light = new THREE.PointLight(0xffffff);
+	light.position.set(0,250,0);
+	scene.add(light);
+	// FLOOR
+	var floorTexture = new THREE.TextureLoader().load( 'textures/stone.jpg' );
+	floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
+	floorTexture.repeat.set( 5, 5 );
+	var floorMaterial = new THREE.MeshBasicMaterial( { map: floorTexture, side:THREE.BackSide } );
+	var floorGeometry = new THREE.PlaneGeometry(1000, 1000, 10, 10);
+	var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+	floor.position.y = -0.5;
+	floor.rotation.x = Math.PI / 2;
+	scene.add(floor);
+	
+	// SKYBOX/FOG
+	var materialArray = [];
+	materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/dawnmountain-xpos.png' ) }));
+	materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/dawnmountain-xneg.png' ) }));
+	materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/dawnmountain-ypos.png' ) }));
+	materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/dawnmountain-yneg.png' ) }));
+	materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/dawnmountain-zpos.png' ) }));
+	materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/dawnmountain-zneg.png' ) }));
+	for (var i = 0; i < 6; i++)
+	   materialArray[i].side = THREE.BackSide;
+	var skyboxMaterial = new THREE.MeshFaceMaterial( materialArray );
+	var skyboxGeom = new THREE.BoxGeometry( 5000, 5000, 5000, 64, 64, 64 );
+	var skybox = new THREE.Mesh( skyboxGeom, skyboxMaterial );
+	scene.add( skybox );	
+	
+	////////////
+	// CUSTOM //
+	////////////
+	
+	var cubeGeom = new THREE.CubeGeometry(200, 200, 30,100,50,50);
+	//var cubeGeom = new THREE.CubeGeometry(200, 200, 30,100,100,110);
+	mirrorCubeCamera = new THREE.CubeCamera( 0.1, 5000, 512 );
+	// mirrorCubeCamera.renderTarget.minFilter = THREE.LinearMipMapLinearFilter;
+	scene.add( mirrorCubeCamera );
+	var mirrorCubeMaterial = new THREE.MeshBasicMaterial( { envMap: mirrorCubeCamera.renderTarget } );
+	mirrorCube = new THREE.Mesh( cubeGeom, mirrorCubeMaterial );
+	mirrorCube.position.set(-75,50,0);
+	//mirrorCubeCamera.position = mirrorCube.position;    not working with new three.js
+	mirrorCubeCamera.position.set(-75,50,0);
+	scene.add(mirrorCube);	
+	
+	var sphereGeom =  new THREE.SphereGeometry( 50, 32, 16 ); // radius, segmentsWidth, segmentsHeight
+	mirrorSphereCamera = new THREE.CubeCamera( 0.1, 5000, 512 );
+	// mirrorCubeCamera.renderTarget.minFilter = THREE.LinearMipMapLinearFilter;
+	scene.add( mirrorSphereCamera );
+	var mirrorSphereMaterial = new THREE.MeshBasicMaterial( { envMap: mirrorSphereCamera.renderTarget } );
+	mirrorSphere = new THREE.Mesh( sphereGeom, mirrorSphereMaterial );
+	mirrorSphere.position.set(75,50,0);
+	//mirrorSphereCamera.position = mirrorSphere.position;
+	mirrorSphereCamera.position.set(75,50,0);
+	scene.add(mirrorSphere);
+	
+
+	mirrorBallCamera = new THREE.CubeCamera(0.1, 1000, 512);
+	scene.add(mirrorBallCamera);
+	
+	const ballRadius = 25.0;
+	const ballSegmentsWidth = 20;
+	const ballSegmentsHeight = 20;
+	const ballGeometry = new THREE.SphereGeometry(ballRadius, ballSegmentsWidth, ballSegmentsHeight);
+	const mirrorBallMaterial = new THREE.MeshBasicMaterial( { envMap: mirrorBallCamera.renderTarget } );
+	mirrorBall = new THREE.Mesh(ballGeometry, mirrorBallMaterial);
+	mirrorBall.position.set(0,50,50);
+	mirrorBallCamera.position.set(0,50,50);
+	scene.add(mirrorBall);
+	
+	mirrorTorusCamera = new THREE.CubeCamera(0.1, 5000, 512);
+	scene.add(mirrorTorusCamera);
+	
+	const torusRadius = 70;
+	const torusTube = 10;
+	const torusRadialSegments = 24;
+	const torusTubularSegments = 36;
+	const torusGeometry = new THREE.TorusGeometry( torusRadius, torusTube, torusRadialSegments, torusTubularSegments );
+	const mirrorTorusMaterial = new THREE.MeshBasicMaterial( { envMap: mirrorTorusCamera.renderTarget } );
+	mirrorTorus = new THREE.Mesh(torusGeometry, mirrorTorusMaterial);
+	mirrorTorus.position.set(500,25,100);
+	mirrorTorusCamera.position.set(500,25,100);
+	scene.add(mirrorTorus);
+	
+	//TORUS WITH SPHERE
+	//SPHERE
+	mirrorSphereInsideTorusCamera = new THREE.CubeCamera(0.1, 5000, 512);
+	scene.add(mirrorSphereInsideTorusCamera);
+	
+	const sphereInsideTorusRadius = 25.0;
+	const sphereInsideTorusSegmentsWidth = 20;
+	const sphereInsideTorusSegmentsHeight = 20;
+	const sphereInsideTorusGeometry = new THREE.SphereGeometry(sphereInsideTorusRadius, 
+																sphereInsideTorusSegmentsWidth, 
+																sphereInsideTorusSegmentsHeight);
+	const mirrorSphereInsideTorusMaterial = new THREE.MeshBasicMaterial( { envMap: mirrorSphereInsideTorusCamera.renderTarget } );
+	mirrorSphereInsideTorus = new THREE.Mesh(sphereInsideTorusGeometry, mirrorSphereInsideTorusMaterial);
+	mirrorSphereInsideTorus.position.set(0,75,200);
+	mirrorSphereInsideTorusCamera.position.set(0,75,200);
+	scene.add(mirrorSphereInsideTorus);
+	
+	// TORUS
+	mirrorTorusAroundSphereCamera = new THREE.CubeCamera(0.1, 5000, 512);
+	scene.add(mirrorTorusAroundSphereCamera);
+	
+	const torusAroundSphereRadius = 70;
+	const torusAroundSphereTube = 10;
+	const torusAroundSphereRadialSegments = 24;
+	const torusAroundSphereTubularSegments = 36;
+	const torusAroundSphereGeometry = new THREE.TorusGeometry( torusAroundSphereRadius, 
+																torusAroundSphereTube, 
+																torusAroundSphereRadialSegments, 
+																torusAroundSphereTubularSegments );
+	const mirrorTorusAroundSphereMaterial = new THREE.MeshLambertMaterial( { envMap: mirrorTorusAroundSphereCamera.renderTarget } );
+	mirrorTorusAroundSphere = new THREE.Mesh(torusAroundSphereGeometry, mirrorTorusAroundSphereMaterial);
+	mirrorTorusAroundSphere.position.set(0,75,200);
+	mirrorTorusAroundSphereCamera.position.set(0,75,200);
+	mirrorTorusAroundSphere.castShadow = true;
+	scene.add(mirrorTorusAroundSphere);
+		
+	
+	// MIRROR ROTATING CUBE
+	mirrorRotatingCubeCamera = new THREE.CubeCamera(0.1, 5000, 512);
+	scene.add(mirrorRotatingCubeCamera);
+	
+	const rotatingCubeWidth = 35.0;
+	const rotatingCubeHeight = 35.0;
+	const rotatingCubeDepth = 35.0;
+	const rotatingCubeWidthSegments = 15;
+	const rotatingCubeHeightSegments = 15;
+	const rotatingCubeDepthSegments = 15;
+	const rotatingCubeGeometry = new THREE.BoxBufferGeometry( rotatingCubeWidth,
+															rotatingCubeHeight,
+															rotatingCubeDepth,
+															rotatingCubeWidthSegments,
+															rotatingCubeHeightSegments,
+															rotatingCubeDepthSegments);
+	const mirrorRotatingCubeMaterial = new THREE.MeshBasicMaterial( { envMap: mirrorRotatingCubeCamera.renderTarget } );
+	mirrorRotatingCube = new THREE.Mesh(rotatingCubeGeometry, mirrorRotatingCubeMaterial);
+	mirrorRotatingCube.position.set(-200,35,200);
+	mirrorRotatingCubeCamera.position.set(-200,35,200);
+	mirrorRotatingCube.rotation.x=49.35;
+	mirrorRotatingCube.rotation.z=49.35;
+	scene.add(mirrorRotatingCube);
+	
+	//NEW LIGHTS
+	// blue spotlight
+	var blueSpotLight = new THREE.SpotLight(0x0000FF);
+	blueSpotLight.position.set(-40,30,0);
+	blueSpotLight.castShadow = true;
+	blueSpotLight.shadow.camera.near = 1;
+	blueSpotLight.shadow.camera.far = 100;
+	blueSpotLight.shadow.camera.fov = 60;
+	blueSpotLight.shadow.mapSize.width = 2048;
+	blueSpotLight.shadow.mapSize.height = 2048;
+	blueSpotLight.target = mirrorTorusAroundSphere;
+	scene.add(blueSpotLight);
+	scene.add(blueSpotLight.target);
+	
+	// red spotlight
+	var redSpotLight = new THREE.SpotLight(0xFF0000);
+	redSpotLight.position.set(40,30,350);
+	redSpotLight.castShadow = true;
+	redSpotLight.shadow.camera.near = 1;
+	redSpotLight.shadow.camera.far = 100;
+	redSpotLight.shadow.camera.fov = 60;
+	redSpotLight.shadow.mapSize.width = 2048;
+	redSpotLight.shadow.mapSize.height = 2048;
+	redSpotLight.target = mirrorTorusAroundSphere;
+	scene.add(redSpotLight);
+	scene.add(redSpotLight.target);
+}
+
+
+// call the render function
+
+function animate() 
+{
+    requestAnimationFrame( animate );	
+	render();
+
+	step += 0.15;
+	
+    mirrorBall.position.x = 20 + ( 500 * (Math.cos(step)));
+    mirrorBall.position.z = 2 + ( 500 * (Math.sin(step)));
+
+	mirrorTorus.rotation.y += speedControls.torusRotationYSpeed;
+	mirrorTorus.position.y = 75 + ( 200 * (Math.sin(speedControls.torusPositionYSpeed)));
+	
+	mirrorRotatingCube.rotation.y += speedControls.cubeRotation;
+	update();
+}
+
+
+function update()
+{
+	if ( keyboard.pressed("z") ) 
+	{ 
+		// do something
+		mirrorTorusAroundSphere.rotation.x += 1;
+	}
+	
+	controls.update();
+	speedControls.update();
+	stats.update();
+}
+
+function render() 
+{
+	// move the CubeCamera to the position of the object
+	//    that has a reflective surface, "take a picture" in each direction
+	//    and apply it to the surface.
+	// need to hide surface before and after so that it does not
+	//    "get in the way" of the camera
+	mirrorCube.visible = false;
+	mirrorCubeCamera.updateCubeMap( renderer, scene );
+	mirrorCube.visible = true;
+
+	mirrorSphere.visible = false;
+	mirrorSphereCamera.updateCubeMap( renderer, scene );
+	mirrorSphere.visible = true;
+
+    //torus.visible = false;
+	//mirrorTorusCamera.updateCubeMap( renderer, scene );
+	//torus.visible = true;
+	
+	mirrorBall.visible = false;
+	mirrorBallCamera.updateCubeMap( renderer, scene );
+	mirrorBall.visible = true;
+	
+	mirrorTorus.visible = false;
+	mirrorTorusCamera.updateCubeMap( renderer, scene );
+	mirrorTorus.visible = true;
+	
+	mirrorSphereInsideTorus.visible = false;
+	mirrorSphereInsideTorusCamera.updateCubeMap( renderer, scene );
+	mirrorSphereInsideTorus.visible = true;
+	
+	mirrorTorusAroundSphere.visible = false;
+	mirrorTorusAroundSphereCamera.updateCubeMap( renderer, scene );
+	mirrorTorusAroundSphere.visible = true;
+	
+	mirrorRotatingCube.visible = false;
+	mirrorRotatingCubeCamera.updateCubeMap( renderer, scene );
+	mirrorRotatingCube.visible = true;
+	
+	renderer.render( scene, camera );
+}
+
+</script>
+
+</body>
+</html>
