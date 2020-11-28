@@ -1,0 +1,8 @@
+Prerequisites:
+1. bunny.png file must be in the same file as main html file
+2. Use Web Server for Chrome app to open the project with textures.
+
+Controls:
+- Keyboard - arrows (go left, right, forward, back)
+- mouse - turn around
+- space - jump

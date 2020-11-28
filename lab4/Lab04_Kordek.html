@@ -1,0 +1,503 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Lab03-05 - pointerlock controls</title>
+		<style>
+			html, body {
+				width: 100%;
+				height: 100%;
+			}
+
+			body {
+				background-color: #ffffff;
+				margin: 0;
+				overflow: hidden;
+				font-family: arial;
+			}
+
+			#blocker {
+
+				position: absolute;
+
+				width: 100%;
+				height: 100%;
+
+				background-color: rgba(0,0,0,0.5);
+
+			}
+
+			#instructions {
+
+				width: 100%;
+				height: 100%;
+
+				display: -webkit-box;
+				display: -moz-box;
+				display: box;
+
+				-webkit-box-orient: horizontal;
+				-moz-box-orient: horizontal;
+				box-orient: horizontal;
+
+				-webkit-box-pack: center;
+				-moz-box-pack: center;
+				box-pack: center;
+
+				-webkit-box-align: center;
+				-moz-box-align: center;
+				box-align: center;
+
+				color: #ffffff;
+				text-align: center;
+
+				cursor: pointer;
+
+			}
+
+		</style>
+		<script type="text/javascript" src="dat.gui.js"></script>
+	</head>
+	<body>
+		<script src="three.js"></script>
+		<script src="PointerLockControls.js"></script>
+		
+
+		<script src="TrackballControls.js"></script>
+
+		<script src="Detector.js"></script>
+		<script src="stats.min.js"></script>
+
+		<div id="blocker">
+
+			<div id="instructions">
+				<span style="font-size:40px">Click to play</span>
+				<br />
+				(W, A, S, D = Move, SPACE = Jump, MOUSE = Look around)
+			</div>
+
+		</div>
+
+		<script>
+
+			var camera, scene, renderer;
+			var geometry, material, mesh;
+			var controls,time = Date.now();
+
+			var objects = [];
+
+			var ray;
+
+			///
+			var redCubeMesh;
+			var redCubeObjects = [];
+			var redSpotLight, redSpotLight2, violetSpotLight, yellowSpotLight;
+			
+			var sphere;
+			
+			var gui;
+			///
+	
+			var instructions = document.getElementById( 'instructions' );
+
+			// http://www.html5rocks.com/en/tutorials/pointerlock/intro/
+
+			var havePointerLock = 'pointerLockElement' in document || 'mozPointerLockElement' in document || 'webkitPointerLockElement' in document;
+
+			if ( havePointerLock ) {
+
+				var element = document.body;
+
+				var pointerlockchange = function ( event ) {
+
+					if ( document.pointerLockElement === element || document.mozPointerLockElement === element || document.webkitPointerLockElement === element ) {
+
+						controls.enabled = true;
+
+
+					} else {
+
+						controls.enabled = false;
+
+						instructions.style.display = '';
+
+					}
+
+				}
+
+				var pointerlockerror = function ( event ) {
+
+					instructions.style.display = '';
+
+				}
+
+				// Hook pointer lock state change events
+				document.addEventListener( 'pointerlockchange', pointerlockchange, false );
+				document.addEventListener( 'mozpointerlockchange', pointerlockchange, false );
+				document.addEventListener( 'webkitpointerlockchange', pointerlockchange, false );
+
+				document.addEventListener( 'pointerlockerror', pointerlockerror, false );
+				document.addEventListener( 'mozpointerlockerror', pointerlockerror, false );
+				document.addEventListener( 'webkitpointerlockerror', pointerlockerror, false );
+
+				instructions.addEventListener( 'click', function ( event ) {
+
+					instructions.style.display = 'none';
+
+					// Ask the browser to lock the pointer
+					element.requestPointerLock = element.requestPointerLock || element.mozRequestPointerLock || element.webkitRequestPointerLock;
+
+					if ( /Firefox/i.test( navigator.userAgent ) ) {
+
+						var fullscreenchange = function ( event ) {
+
+							if ( document.fullscreenElement === element || document.mozFullscreenElement === element || document.mozFullScreenElement === element ) {
+
+								document.removeEventListener( 'fullscreenchange', fullscreenchange );
+								document.removeEventListener( 'mozfullscreenchange', fullscreenchange );
+
+								element.requestPointerLock();
+							}
+
+						}
+
+						document.addEventListener( 'fullscreenchange', fullscreenchange, false );
+						document.addEventListener( 'mozfullscreenchange', fullscreenchange, false );
+
+						element.requestFullscreen = element.requestFullscreen || element.mozRequestFullscreen || element.mozRequestFullScreen || element.webkitRequestFullscreen;
+
+						element.requestFullscreen();
+
+					} else {
+
+						element.requestPointerLock();
+
+					}
+
+				}, false );
+
+			} else {
+
+				instructions.innerHTML = 'Your browser doesn\'t seem to support Pointer Lock API';
+
+			}
+
+			init();
+			animate();
+
+			function init() {
+			
+				gui = new dat.GUI();
+				speedControls = new function(){
+					this.redCubesSpeed = 0.002;
+				}
+				
+				gui.add(speedControls, 'redCubesSpeed', 0, 0.02).onChange(function (e) {
+					torusRotationYSpeed = e;
+				});
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
+
+				scene = new THREE.Scene();
+				scene.fog = new THREE.Fog( 0xffffff, 0, 750 );
+
+				var light = new THREE.DirectionalLight( 0xffffff, 1.5 );
+				light.position.set( 1, 1, 1 );
+				scene.add( light );
+
+				var light = new THREE.DirectionalLight( 0xffffff, 0.75 );
+				light.position.set( -1, - 0.5, -1 );
+				scene.add( light );
+
+				controls = new THREE.PointerLockControls( camera );
+				scene.add( controls.getObject() );
+
+				ray = new THREE.Raycaster();
+				ray.ray.direction.set( 0, -1, 0 );
+
+				// floor
+
+				geometry = new THREE.PlaneGeometry( 2000, 2000, 100, 100 );
+				geometry.applyMatrix( new THREE.Matrix4().makeRotationX( - Math.PI / 2 ) );
+
+				for ( var i = 0, l = geometry.vertices.length; i < l; i ++ ) {
+
+					var vertex = geometry.vertices[ i ];
+					vertex.x += Math.random() * 20 - 10;
+					vertex.y += Math.random() * 2;
+					vertex.z += Math.random() * 20 - 10;
+
+				}
+
+				for ( var i = 0, l = geometry.faces.length; i < l; i ++ ) {
+
+					var face = geometry.faces[ i ];
+					face.vertexColors[ 0 ] = new THREE.Color().setHSL( Math.random() * 0.2 + 0.7, 0.75, Math.random() * 0.25 + 0.75 );
+					face.vertexColors[ 1 ] = new THREE.Color().setHSL( Math.random() * 0.2 + 0.7, 0.75, Math.random() * 0.25 + 0.75 );
+					face.vertexColors[ 2 ] = new THREE.Color().setHSL( Math.random() * 0.2 + 0.7, 0.75, Math.random() * 0.25 + 0.75 );
+
+				}
+
+				material = new THREE.MeshBasicMaterial( { vertexColors: THREE.VertexColors } );
+
+				mesh = new THREE.Mesh( geometry, material );
+				scene.add( mesh );
+
+				// objects
+
+				geometry = new THREE.BoxGeometry( 20, 20, 20 );
+
+				for ( var i = 0, l = geometry.faces.length; i < l; i ++ ) {
+
+					var face = geometry.faces[ i ];
+					//face.vertexColors[ 0 ] = new THREE.Color().setHSL( Math.random() * 0.2 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
+					//face.vertexColors[ 1 ] = new THREE.Color().setHSL( Math.random() * 0.2 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
+					//face.vertexColors[ 2 ] = new THREE.Color().setHSL( Math.random() * 0.2 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
+					face.vertexColors[ 1 ] = new THREE.Color("hsl(0, 0%, 0%)");
+					face.vertexColors[ 1 ] = new THREE.Color("hsl(60, 0%, 60%)");//new THREE.Color("hsl(0, 100%, 100%)");
+					face.vertexColors[ 2 ] = new THREE.Color("hsl(0, 20%, 50%)");
+
+				}
+
+				for ( var i = 0; i < 500; i ++ ) {
+
+					material = new THREE.MeshPhongMaterial( { specular: 0xffffff, shading: THREE.FlatShading, vertexColors: THREE.VertexColors } );
+
+					var mesh = new THREE.Mesh( geometry, material );
+					mesh.position.x = Math.floor( Math.random() * 20 - 10 ) * 25;
+					mesh.position.y = Math.floor( Math.random() * 20 ) * 20 + 10;
+					mesh.position.z = Math.floor( Math.random() * 20 - 10 ) * 20;
+					scene.add( mesh );
+
+					material.color.setHSL( Math.random() * 0.2 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
+
+					objects.push( mesh );
+
+				}
+				
+				
+				// new objects
+				
+				for ( var i = 0; i < 50; i ++ ) {
+
+					material = new THREE.MeshPhongMaterial( { specular: 0xffffff, shading: THREE.FlatShading, vertexColors: THREE.VertexColors } );
+
+					var mesh = new THREE.Mesh( geometry, material );
+					mesh.position.x = 400;
+					mesh.position.y = Math.floor( Math.random() * 20 ) * 20 + 10;
+					mesh.position.z = Math.floor( Math.random() * 20 - 10 ) * 20;
+					scene.add( mesh );
+
+					material.color.setHSL( Math.random() * 0.2 + 0.5, 0.75, Math.random() * 0.25 + 0.75 );
+
+					objects.push( mesh );
+
+				}
+
+				
+
+				var redCubeGeometry = new THREE.BoxGeometry( 10, 10, 10 );
+				
+				for ( var i = 0, l = redCubeGeometry.faces.length; i < l; i ++ ) {
+
+					var faceRedCubeGeometry = redCubeGeometry.faces[ i ];
+					var colour = 0xff0000;
+						
+					faceRedCubeGeometry.vertexColors[ 0 ] = new THREE.Color().setHSL( colour, 0, 0 );
+					faceRedCubeGeometry.vertexColors[ 1 ] = new THREE.Color().setHSL( colour, 0.5, 0 );
+					faceRedCubeGeometry.vertexColors[ 2 ] = new THREE.Color().setHSL( colour, 0, 0.5 );
+				}
+				
+				
+				
+				for ( var i = 0; i < 50; i ++ ) {
+
+					var colour = 0xff0000;
+					var redCubeMaterial =  new THREE.MeshLambertMaterial( { color:colour, shading: THREE.FlatShading, refractionRatio: 0.9 } );
+
+					redCubeMesh = new THREE.Mesh( redCubeGeometry, redCubeMaterial );
+						
+					redCubeMesh.position.x = Math.floor( Math.random() * 20 - 10 ) * 20;
+					redCubeMesh.position.y = Math.floor( Math.random() * 20 ) * 20 + 10;
+					redCubeMesh.position.z = Math.floor( Math.random() * 20 - 10 ) * 20;
+						
+					scene.add( redCubeMesh );
+
+					redCubeObjects.push( redCubeMesh );
+
+				}
+					
+					
+					
+					
+				// red spotlight
+				redSpotLight = new THREE.SpotLight(0xFF0000);
+				redSpotLight.position.set(40,30,350);
+				redSpotLight.castShadow = true;
+				redSpotLight.shadow.camera.near = 1;
+				redSpotLight.shadow.camera.far = 100;
+				redSpotLight.shadow.camera.fov = 60;
+				redSpotLight.shadow.mapSize.width = 2048;
+				redSpotLight.shadow.mapSize.height = 2048;
+				scene.add(redSpotLight);
+				scene.add(redSpotLight.target);
+					
+				// red spotlight 2
+				redSpotLight2 = new THREE.SpotLight(0xFF0000);
+				redSpotLight2.position.set(40,30,100);
+				redSpotLight2.castShadow = true;
+				redSpotLight2.shadow.camera.near = 1;
+				redSpotLight2.shadow.camera.far = 100;
+				redSpotLight2.shadow.camera.fov = 60;
+				redSpotLight2.shadow.mapSize.width = 2048;
+				redSpotLight2.shadow.mapSize.height = 2048;
+				scene.add(redSpotLight2);
+					
+					
+				// red spotlight 3
+				redSpotLight3 = new THREE.SpotLight(0xFF0000);
+				redSpotLight3.position.set(0,50,0);
+				redSpotLight3.castShadow = true;
+				redSpotLight3.shadow.camera.near = 1;
+				redSpotLight3.shadow.camera.far = 100;
+				redSpotLight3.shadow.camera.fov = 60;
+				redSpotLight3.shadow.mapSize.width = 2048;
+				redSpotLight3.shadow.mapSize.height = 2048;
+				scene.add(redSpotLight3);
+
+					
+				// yellow spotlight 
+				yellowSpotLight = new THREE.SpotLight(0xFFFF00);
+				yellowSpotLight.position.set(0,50,0);
+				yellowSpotLight.castShadow = true;
+				yellowSpotLight.shadow.camera.near = 1;
+				yellowSpotLight.shadow.camera.far = 100;
+				yellowSpotLight.shadow.camera.fov = 60;
+				yellowSpotLight.shadow.mapSize.width = 2048;
+				yellowSpotLight.shadow.mapSize.height = 2048;
+				scene.add(yellowSpotLight);
+					
+				// violet spotlight
+				violetSpotLight = new THREE.SpotLight(0xBA55D3);
+				violetSpotLight.position.set(40,30,100);
+				violetSpotLight.castShadow = true;
+				violetSpotLight.shadow.camera.near = 1;
+				violetSpotLight.shadow.camera.far = 100;
+				violetSpotLight.shadow.camera.fov = 60;
+				violetSpotLight.shadow.mapSize.width = 2048;
+				violetSpotLight.shadow.mapSize.height = 2048;
+				scene.add(violetSpotLight);
+					
+					
+				var bunny = createMesh(new THREE.PlaneGeometry( 10, 10, 1 ), "bunny.png");
+				bunny.position.y=-0.5;
+				bunny.position.z=-5;
+				scene.add(bunny);
+				camera.add(bunny);	
+				
+				///
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setClearColor( 0xffffff );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				document.body.appendChild( renderer.domElement );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			var step = 0;
+			
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				//
+
+				controls.isOnObject( false );
+
+				ray.ray.origin.copy( controls.getObject().position );
+				ray.ray.origin.y -= 10;
+
+				var intersections = ray.intersectObjects( objects );
+
+				if ( intersections.length > 0 ) {
+
+					var distance = intersections[ 0 ].distance;
+
+					if ( distance > 0 && distance < 10 ) {
+
+						controls.isOnObject( true );
+
+					}
+
+				}
+				
+				
+				var intersectionsRedCube = ray.intersectObjects( redCubeObjects );
+				for(var i=0; i<redCubeObjects.length; i++){
+				
+					redCubeObjects[i].position.x = 20 + ( 500 * (Math.cos(step)));
+					
+					if ( intersectionsRedCube.length > 0 ) {
+
+						var distanceRedCube = intersectionsRedCube[ 0 ].distance;
+						for ( let i = 0; i < intersectionsRedCube.length; i ++ ) {
+
+							intersectionsRedCube[ i ].object.material.color.set( 0x00ff00 );
+
+						}	
+					
+						if ( distanceRedCube > 0 && distanceRedCube < 10 ) {
+
+							controls.isOnObject( true );
+
+						}
+
+					}
+			
+				}		
+					
+				step += speedControls.redCubesSpeed;
+				
+				redSpotLight.position.x = 20 + ( 500 * (Math.cos(step)));
+				redSpotLight2.position.x = 20 + ( 500 * (Math.cos(step)));
+				redSpotLight3.position.x = 20 + ( 500 * (Math.cos(step)));	
+				yellowSpotLight.position.x = 20 + ( 500 * (Math.cos(step)));
+				
+				controls.update( Date.now() - time );
+
+				renderer.render( scene, camera );
+
+				time = Date.now();
+
+			}
+			
+			function createMesh(geom, imageFile) {
+				var texture = new THREE.TextureLoader().load(imageFile);
+				texture.repeat.set( 1, 1 );
+				var mat = new THREE.MeshPhongMaterial();
+				mat.map = texture;
+				mat.colour = "0xffffff";
+				mat.transparent = true;
+
+				var mesh = new THREE.Mesh(geom, mat);
+				return mesh;
+			}
+
+		</script>
+	</body>
+</html>
