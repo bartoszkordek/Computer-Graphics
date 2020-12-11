@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+
+<div class="viewport"></div>
+
+<script src="three.min.js"></script>
+<script src="physi.js"></script>
+<script src="Detector.js"></script>
+<script>
+    var container, scene, renderer, camera, light, ball, plane;
+    var plane201, plane202, plane203, plane204;
+    var plane301, plane302, plane303, plane304, plane305, plane306, plane307, plane308;
+    var boxSlabPlane;
+    var palette;
+    const cylindersCount = 5;
+    var WIDTH, HEIGHT, VIEW_ANGLE, ASPECT, NEAR, FAR;
+
+    var clock = new THREE.Clock();
+
+    Physijs.scripts.worker = 'physijs_worker.js';
+    Physijs.scripts.ammo = 'ammo.js';
+
+    container = document.querySelector('.viewport');
+
+    WIDTH = window.innerWidth,
+        HEIGHT = window.innerHeight;
+
+    VIEW_ANGLE = 45,
+        ASPECT = WIDTH / HEIGHT,
+        NEAR = 1,
+        FAR = 10000;
+
+    scene = new Physijs.Scene();
+    scene.setGravity(new THREE.Vector3( 0, -50, 0 ));
+    scene.addEventListener('update', function() {
+        scene.simulate(undefined, 2);
+    });
+
+    renderer = new THREE.WebGLRenderer({
+        antialias: true
+    });
+
+    renderer.setSize(WIDTH, HEIGHT);
+    renderer.shadowMapEnabled = true;
+    renderer.shadowMapSoft = true;
+    renderer.shadowMapType = THREE.PCFShadowMap;
+    renderer.shadowMapAutoUpdate = true;
+
+    container.appendChild(renderer.domElement);
+
+    camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+
+    camera.position.set(90, 65, 185);
+    camera.lookAt(scene.position);
+    scene.add(camera);
+
+    light = new THREE.DirectionalLight(0xffffff);
+
+    light.position.set(0, 100, 60);
+    light.castShadow = true;
+    light.shadowCameraLeft = -60;
+    light.shadowCameraTop = -60;
+    light.shadowCameraRight = 60;
+    light.shadowCameraBottom = 60;
+    light.shadowCameraNear = 1;
+    light.shadowCameraFar = 1000;
+    light.shadowBias = -.0001
+    light.shadowMapWidth = light.shadowMapHeight = 1024;
+    light.shadowDarkness = .7;
+
+    scene.add(light);
+    /*
+        plane = new Physijs.BoxMesh(
+          new THREE.CubeGeometry(10, 10, 2, 10, 10),
+          Physijs.createMaterial(
+            new THREE.MeshLambertMaterial({
+              color: 0xeeeeee
+            }),
+            .4,
+            .99
+          ),
+          0
+        );
+
+
+        plane.rotation.x = -Math.PI / 2;
+        plane.rotation.y = Math.PI / 24;
+        plane.receiveShadow = true;
+
+        plane.position.x = 0.0;
+        plane.position.y = 0.0;
+        plane.position.z = 0.0;
+
+        scene.add(plane);
+        */
+    const size200x = 35.0;
+    const size200y = 35.0;
+    const size200z = 2.0;
+    const colour200 = 0xaaaaaa;
+    const positionX201 = 30.0;
+    const positionY201 = -20.0;
+    const positionZ201 = -25.0;
+
+    plane201 = drawSlab(size200x,size200y,size200z,colour200,positionX201,positionY201,positionZ201);
+    scene.add(plane201);
+
+    const positionX202 = -20.0;
+    const positionY202 = -20.0;
+    const positionZ202 = -75.0;
+
+    plane202 = drawSlab(size200x,size200y,size200z,colour200,positionX202,positionY202,positionZ202);
+    scene.add(plane202);
+
+    const positionX203 = -20.0;
+    const positionY203 = -20.0;
+    const positionZ203 = -20.0;
+
+    plane203 = drawSlab(size200x,size200y,size200z,colour200,positionX203,positionY203,positionZ203);
+    scene.add(plane203);
+
+    const positionX204 = -75.0;
+    const positionY204 = -20.0;
+    const positionZ204 = -50.0;
+
+    plane204 = drawSlab(size200x,size200y,size200z,colour200,positionX204,positionY204,positionZ204);
+    scene.add(plane204);
+
+    const size300x = 40.0;
+    const size300y = 40.0;
+    const size300z = 2.0;
+    const colour300 = 0x222222;
+    const positionX301 = 70.0;
+    const positionY301 = -50.0;
+    const positionZ301 = -25.0;
+
+    plane301 = drawSlab(size300x,size300y,size300z,colour300,positionX301,positionY301,positionZ301);
+    scene.add(plane301);
+
+    const positionX302 = 20.0;
+    const positionY302= -50.0;
+    const positionZ302 = -25.0;
+
+    plane302 = drawSlab(size300x,size300y,size300z,colour300,positionX302,positionY302,positionZ302);
+    scene.add(plane302);
+
+    const positionX303 = -50.0;
+    const positionY303= -50.0;
+    const positionZ303 = 0.0;
+
+    plane303 = drawSlab(size300x,size300y,size300z,colour300,positionX303,positionY303,positionZ303);
+    scene.add(plane303);
+
+    const positionX304 = -100.0;
+    const positionY304= -50.0;
+    const positionZ304 = 0.0;
+
+    plane304 = drawSlab(size300x,size300y,size300z,colour300,positionX304,positionY304,positionZ304);
+    scene.add(plane304);
+
+    const positionX305 = -150.0;
+    const positionY305= -50.0;
+    const positionZ305 = -50.0;
+
+    plane305 = drawSlab(size300x,size300y,size300z,colour300,positionX305,positionY305,positionZ305);
+    scene.add(plane305);
+
+    const positionX306 = -150.0;
+    const positionY306= -50.0;
+    const positionZ306 = 0.0;
+
+    plane306 = drawSlab(size300x,size300y,size300z,colour300,positionX306,positionY306,positionZ306);
+    scene.add(plane306);
+
+    const positionX307 = -150.0;
+    const positionY307= -50.0;
+    const positionZ307 = -150.0;
+
+    plane307 = drawSlab(size300x,size300y,size300z,colour300,positionX307,positionY307,positionZ307);
+    scene.add(plane307);
+
+    const positionX308 = 0.0;
+    const positionY308= -50.0;
+    const positionZ308 = -150.0;
+
+    plane308 = drawSlab(size300x,size300y,size300z,colour300,positionX308,positionY308,positionZ308);
+    scene.add(plane308);
+
+    const paletteSizeX = 30.0;
+    const paletteSizeY = 30.0;
+    const paletteSizeZ = 2.0;
+    const paletteColour = 0x0FFF00;
+    const palettePositionX = -20.0;
+    const palettePositionY= 30.0;
+    const palettePositionZ = 0.0;
+
+    palette = drawSlab(paletteSizeX,paletteSizeY,paletteSizeZ,paletteColour,palettePositionX,palettePositionY,palettePositionZ);
+    palette.rotation.x = -Math.PI / 2;
+    palette.rotation.y = Math.PI / 2
+    scene.add(palette);
+
+    var cone = new Physijs.BoxMesh(
+        new THREE.CylinderGeometry( 0, 5, 20, 32 ),
+        Physijs.createMaterial(
+            new THREE.MeshLambertMaterial({
+                color: 0xFFF000
+            }),
+            .4,
+            .99
+        ),
+        0
+    );
+
+    cone.position.x = 0;
+    cone.position.y = 0;
+    cone.position.z = 0;
+
+    scene.add(cone);
+
+    for ( var i = 0; i < cylindersCount; i ++ ) {
+        var cylinder = new Physijs.BoxMesh(
+            new THREE.CylinderGeometry( 5, 5, 10, 32 ),
+            Physijs.createMaterial(
+                new THREE.MeshLambertMaterial({
+                    color: 0xeeeeee
+                }),
+                .4,
+                .99
+            ),
+            0
+        );
+
+        cylinder.position.x = Math.random()*200 - 100;
+        cylinder.position.y = Math.random()*(-1)*50;
+        cylinder.position.z = Math.random()*100 - 100;
+
+        scene.add(cylinder);
+
+    }
+
+    var bumperMaterial1 = Physijs.createMaterial(
+        new THREE.MeshLambertMaterial({ color: 0xFFFF00 }),
+        .8, // high friction
+        .10 // restitution
+    );
+
+    var bumperMaterial2 = Physijs.createMaterial(
+        new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.5, color: 0xFFFF00 }),
+        .8, // high friction
+        .4 // low restitution
+    );
+
+
+
+    var bumper;
+    var	bumperGeometry = new THREE.CubeGeometry(2, 10, 55);
+
+    bumper = new Physijs.BoxMesh( bumperGeometry, bumperMaterial1, 0, { restitution: .2 } );
+    bumper.position.x = 0;
+    bumper.position.y = -25;
+    bumper.position.z = 54;
+    bumper.receiveShadow = true;
+    bumper.castShadow = true;
+    scene.add( bumper );
+
+    bumper = new Physijs.BoxMesh( bumperGeometry, bumperMaterial2, 0, { restitution: .2 } );
+    bumper.position.x = 54;
+    bumper.position.y = -25;
+    bumper.position.z = 54;
+    bumper.receiveShadow = true;
+    bumper.castShadow = true;
+    scene.add( bumper );
+
+    bumper = new Physijs.BoxMesh( bumperGeometry, bumperMaterial1, 0, { restitution: .2 } );
+    bumper.position.x = 27;
+    bumper.position.y = -25;
+    bumper.position.z = 27;
+    bumper.rotation.y = Math.PI / 2;
+    bumper.receiveShadow = true;
+    bumper.castShadow = true;
+    scene.add( bumper );
+
+    bumper = new Physijs.BoxMesh( bumperGeometry, bumperMaterial2, 0, { restitution: .2 } );
+    bumper.position.x = 27;
+    bumper.position.y = -25;
+    bumper.position.z = 81;
+    bumper.rotation.y = Math.PI / 2;
+    bumper.receiveShadow = true;
+    bumper.castShadow = true;
+    scene.add( bumper );
+
+    const boxSlabPlaneSizeX = 55.0;
+    const boxSlabPlaneSizeY = 55.0;
+    const boxSlabPlaneSizeZ = 0.5;
+    const boxSlabPlanePositionX = 27.0;
+    const boxSlabPlanePositionY = -25.0;
+    const boxSlabPlanePositionZ = 54.0;
+    const boxSlabPlaneColour = 0x00FF00;
+
+    boxSlabPlane = drawSlab(boxSlabPlaneSizeX,boxSlabPlaneSizeY,boxSlabPlaneSizeZ,boxSlabPlaneColour,
+        boxSlabPlanePositionX,boxSlabPlanePositionY,boxSlabPlanePositionZ);
+    boxSlabPlane.rotation.y = Math.PI;
+    scene.add(boxSlabPlane);
+
+    var beam;
+    var beamGeometry = new THREE.CubeGeometry(20, 0.5, 30);
+    var beamMaterial = Physijs.createMaterial(
+        new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.5, color: 0x0000FF }),
+        .8, // high friction
+        .2 // low restitution
+    );
+    beam = new Physijs.BoxMesh( beamGeometry, beamMaterial, 0, { restitution: .2 } );
+    beam.position.x = 20;
+    beam.position.y = -15;
+    beam.position.z = 20;
+    beam.rotation.z = Math.PI / 12;
+    beam.rotation.y = Math.PI / 2;
+    beam.receiveShadow = true;
+    beam.castShadow = true;
+    scene.add( beam );
+
+    beam = new Physijs.BoxMesh( beamGeometry, beamMaterial, 0, { restitution: .2 } );
+    beam.position.x = 0;
+    beam.position.y = 0;
+    beam.position.z = 20;
+    beam.receiveShadow = true;
+    beam.castShadow = true;
+    scene.add( beam );
+
+    beam = new Physijs.BoxMesh( beamGeometry, beamMaterial, 0, { restitution: .2 } );
+    beam.position.x = 0;
+    beam.position.y = -20;
+    beam.position.z = 45;
+    beam.rotation.z = -Math.PI / 24;
+    beam.receiveShadow = true;
+    beam.castShadow = true;
+    scene.add( beam );
+
+
+    setInterval(function() {
+        ball = new Physijs.SphereMesh(
+            new THREE.SphereGeometry(
+                Math.random() * (4 - 1) + 1,
+                16,
+                16
+            ),
+            Physijs.createMaterial(
+                new THREE.MeshLambertMaterial({
+                    color: 0xff0000,
+                    reflectivity: .8
+                }),
+                .4,
+                .99
+            ),
+            1
+        );
+
+        var r = {
+            x: Math.random() * (Math.PI - Math.PI / 12) + Math.PI / 12,
+            y: Math.random() * (Math.PI - Math.PI / 12) + Math.PI / 12,
+            z: Math.random() * (Math.PI - Math.PI / 12) + Math.PI / 12
+        };
+
+        ball.rotation.set(r.x, r.y, r.z);
+        ball.position.y = 40;
+        ball.castShadow = true;
+        ball.receiveShadow = true;
+
+        scene.add(ball);
+    }, 600);
+
+    render();
+    scene.simulate()
+
+    function render() {
+        for (var i = 5; i < scene.children.length - 5; i++) {
+            var obj = scene.children[i];
+
+            //if (obj.position.y <= -50) {
+            //  scene.remove(obj);
+            //}
+        }
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+
+
+    }
+
+    function drawSlab(width, length, height, colour, positionX, positionY, positionZ){
+
+        var heightSegments = 20.0;
+        var depthSegments = 20.0;
+        var slab = new Physijs.BoxMesh(
+            new THREE.CubeGeometry(width, length, height, heightSegments, depthSegments),
+            Physijs.createMaterial(
+                new THREE.MeshLambertMaterial({
+                    color: colour
+                }),
+                .4,
+                .99
+            ),
+            0
+        );
+
+        slab.rotation.x = -Math.PI / 2;
+        slab.rotation.y = Math.PI / 24;
+        slab.receiveShadow = true;
+
+        slab.position.x = positionX;
+        slab.position.y = positionY;
+        slab.position.z = positionZ;
+        scene.add(slab);
+        return slab;
+    }
+
+</script>
+</body>
+</html>
