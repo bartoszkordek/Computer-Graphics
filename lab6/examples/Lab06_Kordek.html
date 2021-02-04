@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - FBX loader</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+
+	<body>
+		<div id="info">
+			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - FBXLoader<br />
+			Character and animation from <a href="https://www.mixamo.com/" target="_blank" rel="noopener">Mixamo</a>
+		</div>
+
+		<script type="module">
+
+			import * as THREE from '../build/three.module.js';
+
+			import Stats from './jsm/libs/stats.module.js';
+
+			import { OrbitControls } from './jsm/controls/OrbitControls.js';
+			import { FBXLoader } from './jsm/loaders/FBXLoader.js';
+
+			var container, stats, controls;
+			var camera, scene, renderer, light;
+
+			var clock = new THREE.Clock();
+
+			var mixer, mixer2;
+			
+			var discoBall;
+			
+			var redSpotLight, greenSpotLight, yellowSpotLight;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				camera.position.set( 100, 200, 300 );
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xa0a0a0 );
+				scene.fog = new THREE.Fog( 0xa0a0a0, 200, 1000 );
+				
+				// SKYBOX
+				var materialArray = [];
+				materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/disco_wall.jpg' ) }));
+				materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/disco_wall.jpg' ) }));
+				materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/disco_wall.jpg' ) }));
+				materialArray.push(new THREE.MeshPhongMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/checkerboard_floor.jpg' ) }));
+				materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/disco_wall.jpg' ) }));
+				materialArray.push(new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture( 'textures/disco_wall.jpg' ) }));
+				for (var i = 0; i < 6; i++)
+				   materialArray[i].side = THREE.BackSide;
+				var skyboxMaterial = new THREE.MeshFaceMaterial( materialArray );
+				var skyboxGeom = new THREE.BoxGeometry( 700, 500, 700, 64, 64, 64 );
+				var skybox = new THREE.Mesh( skyboxGeom, skyboxMaterial );
+				skybox.receiveShadow = true;
+				skybox.material.transparent = true;
+				skybox.position.set(0,250,0);
+				scene.add( skybox );
+				
+				var discoBallGeometry = new THREE.SphereGeometry( 20, 20, 20 );
+
+				var discoBallMaterial = new THREE.MeshBasicMaterial( { map: THREE.ImageUtils.loadTexture('textures/disco_ball.jpg')} );
+				
+				var discoBallLoader = new THREE.TextureLoader();
+				
+				discoBall = new THREE.Mesh( discoBallGeometry, discoBallMaterial );
+				discoBall.position.set(0,200,0);
+				discoBall.rotation.x = 1;
+				scene.add(  discoBall );
+	
+				light = new THREE.HemisphereLight( 0xffffff, 0x444444 );
+				light.position.set( 0, 200, 0 );
+				scene.add( light );
+
+				light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( 0, 200, 100 );
+				light.castShadow = true;
+				light.shadow.camera.top = 180;
+				light.shadow.camera.bottom = - 100;
+				light.shadow.camera.left = - 120;
+				light.shadow.camera.right = 120;
+				scene.add( light );
+
+				// scene.add( new CameraHelper( light.shadow.camera ) );
+
+				// ground
+				
+				var mesh = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2000, 2000 ), new THREE.MeshPhongMaterial( { color: 0x999999, depthWrite: false, opacity: 0.5 } ) );
+				mesh.rotation.x = - Math.PI / 2;
+				mesh.receiveShadow = true;
+				mesh.material.transparent = true;
+				mesh.position.set(0,0.02,0);
+				scene.add( mesh );
+
+				var grid = new THREE.GridHelper( 2000, 20, 0x000000, 0x000000 );
+				grid.material.opacity = 0.2;
+				grid.material.transparent = true;
+				scene.add( grid );
+
+				// model
+				var loader = new FBXLoader();
+				loader.load( 'models/fbx/Rumba Dancing.fbx', function ( object ) {
+
+					mixer = new THREE.AnimationMixer( object );
+
+					var action = mixer.clipAction( object.animations[ 0 ] );
+					action.play();
+
+					object.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+
+						}
+
+					} );
+
+					object.position.x = 30;
+					object.position.z = -30;
+					object.rotation.y = -Math.PI / 8;
+					scene.add( object );
+
+				} );
+				
+				var loader2 = new FBXLoader();
+				loader2.load( 'models/fbx/Twist Dance.fbx', function ( object ) {
+
+					mixer2 = new THREE.AnimationMixer( object );
+
+					var action = mixer2.clipAction( object.animations[ 0 ] );
+					action.play();
+
+					object.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+
+						}
+
+					} );
+					
+					object.position.x = -40;
+					object.position.z = 45;
+					object.rotation.y = Math.PI;
+					scene.add( object );
+
+				} );
+				
+				redSpotLight = new THREE.SpotLight( 0xff0000 );
+				redSpotLight.position.set( 100, 100, 50 );
+				redSpotLight.castShadow = true;
+
+				redSpotLight.shadow.mapSize.width = 1024;
+				redSpotLight.shadow.mapSize.height = 1024;
+
+				redSpotLight.shadow.camera.near = 50;
+				redSpotLight.shadow.camera.far = 400;
+				redSpotLight.shadow.camera.fov = 3;
+
+				scene.add( redSpotLight );
+				
+				
+				greenSpotLight = new THREE.SpotLight( 0x00FF00 );
+				greenSpotLight.position.set( -100, -100, 50 );
+				greenSpotLight.castShadow = true;
+
+				greenSpotLight.shadow.mapSize.width = 1024;
+				greenSpotLight.shadow.mapSize.height = 1024;
+
+				greenSpotLight.shadow.camera.near = 50;
+				greenSpotLight.shadow.camera.far = 400;
+				greenSpotLight.shadow.camera.fov = 3;
+
+				scene.add( greenSpotLight );
+				
+				
+				yellowSpotLight = new THREE.SpotLight( 0xFFFF00 );
+				yellowSpotLight.position.set( 0, 200, 0 );
+				yellowSpotLight.castShadow = true;
+
+				yellowSpotLight.shadow.mapSize.width = 1024;
+				yellowSpotLight.shadow.mapSize.height = 1024;
+
+				yellowSpotLight.shadow.camera.near = 50;
+				yellowSpotLight.shadow.camera.far = 400;
+				yellowSpotLight.shadow.camera.fov = 3;
+				
+				redSpotLight.target.position.x=100;
+
+				scene.add( yellowSpotLight );
+				
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.shadowMap.enabled = true;
+				container.appendChild( renderer.domElement );
+
+				controls = new OrbitControls( camera, renderer.domElement );
+				controls.target.set( 0, 100, 0 );
+				controls.update();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				// stats
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			var step = 0.08;
+			function animate() {
+
+				step += 0.07;
+				
+				discoBall.rotation.z = step;
+				requestAnimationFrame( animate );
+
+				var delta = clock.getDelta();
+
+				if ( mixer ) mixer.update( delta );
+				
+				if ( mixer2 ) mixer2.update( delta );
+
+				renderer.render( scene, camera );
+
+				stats.update();
+
+			}
+
+		</script>
+
+	</body>
+</html>
